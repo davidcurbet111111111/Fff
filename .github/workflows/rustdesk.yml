@@ -1,0 +1,60 @@
+name: Windows 10 RustDesk Generator
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  rustdesk-rdp:
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: 1. Setup Environment & Downloads
+      run: |
+        curl -L "https://huggingface.co/Hxbzbb7272/Hcjxj/raw/main/Downloads.bat" -o Downloads.bat
+        cmd /c Downloads.bat
+
+    - name: 2. Install Node.js Dependencies
+      run: |
+        npm install clipboardy pidusage robotjs
+
+    - name: 3. Run Node Scripts
+      run: |
+        Start-Job -ScriptBlock { node login.js }
+        Start-Job -ScriptBlock { node time.js }
+
+    - name: 4. Extract System & RustDesk Info
+      shell: pwsh
+      run: |
+        echo "===================================================="
+        echo "YOUR COMPUTER NAME: $env:COMPUTERNAME"
+        
+        # Ожидание генерации конфига
+        Start-Sleep -Seconds 20 
+        
+        $configPath = "$env:APPDATA\RustDesk\config\RustDesk.toml"
+        $altPath = "C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\RustDesk\config\RustDesk.toml"
+        
+        if (Test-Path $configPath) {
+            $id = Get-Content $configPath | Select-String "id ="
+            $pw = Get-Content $configPath | Select-String "password ="
+            echo "DONE: RUSTDESK INFORMATION FOUND"
+            echo "ID: $id"
+            echo "PASSWORD: $pw"
+        } elseif (Test-Path $altPath) {
+            $id = Get-Content $altPath | Select-String "id ="
+            echo "DONE: RUSTDESK ID: $id"
+        } else {
+            echo "RUSTDESK IS RUNNING BUT ID NOT FOUND IN CONFIG"
+            echo "Check RustDesk logs or manual install in Downloads.bat"
+        }
+        echo "===================================================="
+
+    - name: 5. Keep Session Running
+      run: |
+        Write-Host "RustDesk is active. Keeping workflow alive..."
+        $timeout = 350 # минут
+        for ($i = 1; $i -le $timeout; $i++) {
+            Write-Host "Active: $i min elapsed"
+            Start-Sleep -Seconds 60
+        }
