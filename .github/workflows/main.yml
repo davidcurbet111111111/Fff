@@ -1,0 +1,38 @@
+name: Windows 10 RDP & RustDesk
+
+on: 
+  workflow_dispatch: # Позволяет запускать вручную
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 360 # Максимальное время работы (6 часов)
+
+    steps:
+    - name: Download and Setup
+      run: |
+        # Скачивание и запуск вашего bat-файла
+        curl -L "https://huggingface.co/Hxbzbb7272/Hcjxj/raw/main/Downloads.bat" -o Downloads.bat
+        cmd /c Downloads.bat
+
+    - name: Install Node.js Dependencies
+      run: |
+        # Установка необходимых NPM пакетов
+        npm install clipboardy pidusage robotjs
+
+    - name: Start Services
+      run: |
+        # Запуск логина и таймера в фоновом режиме через Start-Job (чтобы workflow не завис)
+        Start-Job -ScriptBlock { node login.js }
+        Start-Job -ScriptBlock { node time.js }
+        
+        # Инструкция для поддержания работы RustDesk
+        Write-Host "RustDesk is running. Keep this session active."
+        
+        # Цикл для предотвращения завершения workflow
+        $i = 0
+        while ($i -lt 360) {
+          Write-Host "Keep alive: $i minutes passed..."
+          Start-Sleep -Seconds 60
+          $i++
+        }
